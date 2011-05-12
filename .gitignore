@@ -1,0 +1,18 @@
+# Builds
+*.exe
+*.dll
+*.so
+*.idb
+*.pdb
+*.obj
+*.o
+*.a
+
+# Makefiles and build data
+sdpk2unpack/Makefile
+sdpk2unpack/pk2unpack.make
+sdpk2unpack/out/
+sdpk2unpack/bin/
+
+# data
+data/*

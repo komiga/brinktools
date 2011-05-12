@@ -1,0 +1,63 @@
+
+// SDPK2 archive format (aka PARS)
+
+// Overview
+//	1. SDPK2 format
+//		a. Layout
+
+// *****************************
+// 1. SDPK2 format
+//	SDPK2 is an archive format for BRINK. Each archive has an accompanying SDMD2 (entry info) file.
+//	TODO: The SDMD2 files seem to be unique to the PC version, and don't always reflect the information in the SDPK2.
+
+// 1.a. Layout
+layout {
+	const rdata<4, 0x00> header="PARS"	// File header
+	short _unk1							// TODO: Unknown; always 1
+	sstring comp_method					// Compression method; "zlib" (len=4) for PC, "lzx " (len=4; space at end) for PS3
+	int offset							// Offset to second section
+	int _unk2							// TODO: Unknown; possibly an offset or size; always 30?
+	uint count							// Number of entries (includes dirs for some reason); always matches names.count
+	UnkSet1 _unkset1					// TODO: Unknown set of data
+	FileChunkInfo files[count+1]		// File info; always has a file with the content "dummy\n" as the first entry
+	// some data here (TODO)
+	// Rest of file is probably file data.
+}
+
+// 1.XXX. UnkSet1
+//	Only observed data is (24 bytes):
+//		00 01 00 00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+//	TODO: Might be a set of shorts
+define UnkSet1 {
+	short s1
+	int i1
+	short s2
+	int i2
+	int i3
+	int i4
+	int i5
+}
+
+// 1.XXX. Hash
+//	Probably a hash... maybe.
+//	zzzenglish001 and 002 have the following data:
+//		06 D2 48 8B 98 AE C3 58 C4 63 EA 93 EB 2E 24 D7
+//		(as hash) 06d2488b98aec358c463ea93eb2e24d7
+//	001 has the following (differs):
+//		00 03 E6 B4 1D 2A 44 F9 D3 34 00 69 E4 BD 6A 11
+//		(as hash) 0003e6b41d2a44f9d3340069e4bd6a11
+define Hash {
+	char data[16]						// Hash data
+}
+
+// 1.XXX. FileChunkInfo
+//	 Size: 30 bytes
+define FileChunkInfo {
+	int id								// Entry id
+	byte _b1							// TODO: Unknown; always 0?
+	uint size							// Data size
+	byte _b2							// TODO: Unknown; always 0?
+	uint offset							// Data offset
+	Hash pathhash						// Hash of the entry's entire path
+}
+

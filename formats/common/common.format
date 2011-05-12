@@ -1,0 +1,132 @@
+
+// Common format definitions
+
+// Overview
+//	1. Notes
+//		a. const tag
+//		b. real tag
+//		c. Character encoding
+//		d. Endianness
+//		e. noread tag and in/out operations
+//		f. Inline operations
+//		g. ignore tag
+//		h. abstract tag
+//	2. Datatypes
+//		a. cstring
+//		b. bool
+//		c. ibool
+//		d. rdata
+//		e. rcstring
+//		f. istring
+//		g. nlstring
+//		h. sstring
+
+// *****************************
+// 1. Notes
+// 1.a. const tag
+//	Sections (fields, members, variables..) marked as 'const' have never
+//	been observed to be differing from the presented value.
+ 
+// 1.b. real tag
+//	A field marked as 'real' in a define is the primary field.
+//	Usually this is only used in defines like 2.a. cstring and 2.d. rdata.
+//	Format-specific definitions usually contain many fields, and as such no
+//	single field is more important than another.
+
+// 1.c. Character encoding
+//	BRINK seems to use ASCII encoding, possibly UTF8 (insufficient data to test at the moment).
+
+// 1.d. Endianness
+//	All data is in big-endian (TODO: possibly depends on each platform).
+
+// 1.e. noread tag and in/out operations
+//	A field marked as 'noread' means that the field is implied data to be
+//	read in a certain manner (usually via an operation), or not at all.
+//	The 'in' and 'out' operations are implied on all defines, and are used
+//	to convey the procedure of reading/writing data which the define outlines.
+//	in/out operations can be used on a define name as well as for fields, e.g.:
+//		bool blah=bool.in();	// Read and store a boolean value
+//		blah.in();				// Read field
+
+// 1.f. Inline operations
+//	Nameless operations in a definition are executed in the order of member
+//	declaration, and serve to perform operations on the data stream.
+//	Any data within the operation is considered local-space and
+//	data must be read/written using the in/out operations on fields.
+//	Variables defined within the operation are not definition members.
+
+// 1.g. ignore tag
+//	The ignore tag is used to say that an occurrence of data should be
+//	ignored if encountered in a defined type.
+
+// 1.h. abstract tag
+//	Defines marked as 'abstract' are either derived elsewhere in some
+//	fashion, or references either to defines in another format or to
+//	abstract ideas bound by implementation.
+
+// *****************************
+// 2. Datatypes
+// 2.a. cstring
+//	Typical C string (array of characters terminated by a null character)
+define cstring {
+	real char str[]				// Indefinite array of characters
+	const char _term='\0'		// Terminated by null character
+}
+
+// 2.b. bool
+//	Boolean value stored as a single byte
+define bool {
+	real byte value				// 0 or 1
+}
+
+// 2.c. ibool
+//	Boolean value stored as an integer
+define ibool {
+	real int value				// 0 or 1
+}
+
+// 2.d. rdata
+//	Reserved data
+//	_size defines the size of the reserved area, _padvalue is used for all bytes in the reserved space
+define rdata<int _size, byte _padvalue> {
+	real byte data[_size]={_padvalue, ...}	// Reserved space. All values are defaulted to _padvalue
+}
+
+// 2.e. rcstring
+//	Reserved-size cstring. _size defines the size of the reserved area, _padvalue is the byte that takes up unused space (NOTE: 0x00 is a valid padding).
+//	For example, rcstring<8, 0xCD>, with a string of "foo" would equate to (in hexadecimal):
+//		66 6F 6F 00 CD CD CD CD
+//	This also limits the size of a string. For example, with rcstring<4, 0xCD> and "foobar" the resulting data is
+//	(last byte has to be null if the string is larger than the reserved space):
+//		66 6f 6f 00
+//	A zero-length string should result in {00, _padvalue, ...}; for example, with rcstring<4, 0xCD> and "":
+//		00 CD CD CD
+define rcstring<uint _size, byte _padvalue> {
+	rdata<_size, _padvalue> _data				// Reserved space for string. All values are defaulted to _padvalue
+	// Implied data
+	real cstring* value=_data					// Interpret as cstring
+}
+
+// 2.f. icstring
+//	Length-written null-terminated string
+define icstring {
+	uint _length						// Size in bytes, including null
+	char _buf[_length]					// Array of characters
+	real cstring value=_buf				// Interpret buffer as cstring
+}
+
+// 2.g. nlstring
+//	Newline-terminated string
+define nlstring {
+	real char str[]						// Indefinite array of characters
+	ignore '\r'							// Ignore a carriage return character if encountered (Windows line ending is "\r\n")
+	const char _term='\n'				// Terminated by linefeed character
+}
+
+// 2.h. sstring
+//	Short length-written string
+define sstring {
+	ushort _length						// Size in bytes
+	real char _buf[_length]				// Array of characters
+}
+

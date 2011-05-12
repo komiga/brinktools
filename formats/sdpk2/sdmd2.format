@@ -1,0 +1,51 @@
+
+// SDMD2 format (SDPK2 entries)
+
+// Overview
+//	1. SDMD2 format
+
+// *****************************
+// 1. SDMD2 format
+//	The SDMD2 format is the complementary index for the SDPK2 (aka PARS) archive format.
+
+// 1.a. Layout
+layout {
+	IDSet compressed			// Compressed IDs TODO: check
+	IDSet uncompressed			// Uncompressed IDs (regular data) TODO: check
+	NameSet names				// Entry names
+	FileSet files				// File entries
+}
+
+// 1.XXX. IDSet
+define IDSet {
+	uint count					// Number of ids; often 1024
+	byte _unk					// TODO: Unknown; always seems to be equal to 1; maybe whether the entries are compressed (goes against two sets idea; the other may be for encrypted files)
+	int ids[count]		// The id array; -1 means unused/unset
+}
+
+// 1.XXX. NameSet
+define NameSet {
+	int _i1						// TODO: Always 1024? (might always be layout.compressed.count; insufficient data)
+	int _i2						// TODO: Always 1023? (doesn't seem to corelate with anything)
+	uint count					// Number of actual entries (sum of the number of valid ids in the compressed and uncompressed sets)
+	uint offsets[count]			// Offsets for entry names (pos starts after this.count; values seem to be off by 1 -- individually TODO: Really?)
+	uint names_size				// Byte size of the names array
+	cstring names[count]		// Entry names (both directories and files)
+}
+
+// 1.XXX. FileSet
+define FileSet {
+	uint count					// The number of file entries
+	FileInfo files[count]		// File entry info
+}
+
+// 1.XXX. FileInfo
+//	Size: 20 bytes
+define FileInfo {
+	int dir_id					// The id of the dir the entry is within; TODO: Unknown if this can be -1
+	int id						// The id of the entry
+	int _i1						// TODO: Unknown; either int or set of two shorts (can't be size-and-size-compressed because sometimes one contradicts the other for a given assumption)
+	int _i2						// TODO: Unknown; always 0?
+	int _i3						// TODO: Unknown; either int or set of two shorts (can't be size-and-size-compressed because sometimes one contradicts the other for a given assumption)
+}
+
