@@ -2,266 +2,115 @@
 #ifndef _PK2UNPACK_SDPK2_HPP_
 #define _PK2UNPACK_SDPK2_HPP_
 
-#include <map>
+//#include <map>
 #include <vector>
 #include <stdlib.h>
-#include <unicode/unistr.h>
+#include <string.h>
 #include <duct/stream.hpp>
 #include <duct/endianstream.hpp>
+#include "misc.hpp"
 
 namespace PK2Unpack {
 
 using namespace duct;
 
-enum EntryFlag {
-	ENTRYFLAG_NONE=0x00,
-	ENTRYFLAG_TABLE=0x01,
-	ENTRYFLAG_COMPRESSED=0x02,
-	ENTRYFLAG_UNCOMPRESSED=0x04
+enum CompressionMethod {
+	COMPMETHOD_UNKNOWN=0,
+	COMPMETHOD_FIRST=1,
+	/* PC */
+	COMPMETHOD_ZLIB=1,
+	/* PS3 */
+	COMPMETHOD_LZX,
+	COMPMETHOD_LAST=COMPMETHOD_LZX
 };
 
-enum EntryType {
-	ENTRYTYPE_NONE=0x00,
-	ENTRYTYPE_DIR=0x01,
-	ENTRYTYPE_FILE=0x02
+// plain-data MD5 hash
+class MD5Hash {
+public:
+	MD5Hash() {
+		clear();
+	};
+	unsigned char* data() {
+		return _data;
+	};
+	const unsigned char* data() const {
+		return _data;
+	};
+	bool isNull() const;
+	void clear() {
+		memset(_data, 0x00, 16);
+	};
+	int compare(const MD5Hash& other) const {
+		return memcmp(_data, other._data, 16);
+	};
+	void deserialize(Stream* stream) {
+		stream->read(_data, 16);
+	};
+	void serialize(Stream* stream) const {
+		stream->write(_data, 16);
+	};
+	void printInfo(unsigned int tabcount=0, bool newline=true) const;
+	
+protected:
+	unsigned char _data[16];
+};
+
+struct MD5HashCompare {
+	bool operator()(const MD5Hash* x, const MD5Hash* y) const {
+		return x->compare(*y)<0;
+	};
 };
 
 class Entry {
 public:
-	Entry()
-		: _id(0), _dirid(0), _flags(ENTRYFLAG_NONE), _type(ENTRYTYPE_NONE), _name(NULL), _i1(0), _i2(0), _i3(0) {
+	Entry() : _blocksize_index(0), _blocksize(0), _size(0), _offset(0) {
 	};
-	Entry(unsigned int id, unsigned int flags=ENTRYFLAG_NONE, EntryType type=ENTRYTYPE_NONE)
-		: _id(id), _dirid(0), _flags(flags), _type(type), _name(NULL), _i1(0), _i2(0), _i3(0) {
-	};
-	~Entry() {
-		release();
-	};
-	
-	void setId(unsigned int id) {
-		_id=id;
-	};
-	unsigned int getId() const {
-		return _id;
-	};
-	void setFlags(unsigned int flags) {
-		_flags=flags;
-	};
-	unsigned int getFlags() const {
-		return _flags;
-	};
-	bool hasFlag(EntryFlag flag) {
-		return (_flags&flag)!=0;
-	};
-	void setType(EntryType type) {
-		_type=type;
-	};
-	EntryType getType() const {
-		return _type;
-	};
-	void setName(const char* name) {
-		release();
-		_name=name;
-	};
-	const char* getName() const {
-		return _name;
-	};
-	
-	void release() {
-		if (_name) {
-			//free(_name);
-			_name=NULL;
-		}
-	};
-	
-	void deserializeId(Stream* stream);
-	void serializeId(Stream* stream) const;
-	void deserializeInfo(Stream* stream);
-	void serializeInfo(Stream* stream) const;
-	//void* read() const;
-	//void write();
-	void printInfo(unsigned int tabcount=0, bool newline=true) const;
-	
-protected:
-	unsigned int _id, _dirid;
-	unsigned int _flags;
-	EntryType _type;
-	const char* _name;
-	int _i1, _i2, _i3;
-};
-
-typedef std::map<unsigned int, Entry*> EntryMap;
-
-class IDSet {
-public:
-	IDSet() : _count(0), _data(NULL), _unk(0) {
-	};
-	~IDSet() {
-		release();
-	};
-	
-	unsigned int getCount() const {
-		return _count;
-	};
-	const int* getData() const {
-		return _data;
-	}
-	
-	void release() {
-		if (_data) {
-			free(_data);
-			_data=NULL;
-			_count=0;
-		}
-	};
-	
-	void deserialize(Stream* stream);
-	void serialize(Stream* stream) const;
-	void printInfo(unsigned int tabcount=0, bool newline=true) const;
-	
-protected:
-	unsigned int _count;
-	int* _data;
-	unsigned char _unk;
-};
-
-class NameSet {
-public:
-	NameSet() : _count(0), _offsets(NULL), _names_size(0), _data(NULL), _i1(0), _i2(0) {
-	};
-	~NameSet() {
-		release();
-	};
-	
-	unsigned int getCount() const {
-		return _count;
-	};
-	const unsigned int* getOffsets() const {
-		return _offsets;
-	};
-	unsigned int getNamesSize() const {
-		return _names_size;
-	};
-	const char** getData() const {
-		return (const char**)_data;
-	};
-	
-	void release() {
-		_count=0;
-		if (_offsets) {
-			free(_offsets);
-		}
-		if (_data) {
-			free(_data);
-			_data=NULL;
-			_names_size=0;
-		}
-	};
-	
-	void deserialize(Stream* stream);
-	void serialize(Stream* stream) const;
-	void printInfo(unsigned int tabcount=0, bool newline=true) const;
-	
-protected:
-	unsigned int _count;
-	unsigned int* _offsets;
-	unsigned int _names_size;
-	char** _data;
-	int _i1, _i2;
-};
-
-class FileInfo {
-public:
-	FileInfo() : _dir_id(0), _id(0), _i1(0), _i2(0), _i3(0) {
-	};
-	FileInfo(Stream* stream) {
+	Entry(Stream* stream) {
 		deserialize(stream);
 	};
-	
-	unsigned int getDirId() const {
-		return _dir_id;
+	MD5Hash hash() {
+		return _hash;
 	};
-	unsigned int getId() const {
-		return _id;
+	const MD5Hash& hash() const {
+		return _hash;
 	};
-	
+	unsigned int getBlockSizeIndex() const {
+		return _blocksize_index;
+	};
+	void* read(Stream* stream, CompressionMethod comp_method) const;
 	void deserialize(Stream* stream);
+	void deserializeBlockSize(Stream* stream);
 	void serialize(Stream* stream) const;
 	void printInfo(unsigned int tabcount=0, bool newline=true) const;
 	
 protected:
-	unsigned int _dir_id;
-	unsigned int _id;
-	int _i1, _i2, _i3;
+	MD5Hash _hash;
+	unsigned int _blocksize_index, _blocksize;
+	size_t _size, _offset;
 };
 
-typedef std::vector<FileInfo> FileInfoVec;
+//typedef std::map<const MD5Hash*, Entry*, MD5HashCompare> EntryMap;
+typedef std::vector<Entry> EntryVec;
 
-class FileSet {
+class SDPK2 {
 public:
-	FileSet() {
+	SDPK2(const char* path) : _stream(NULL), _path(path), _comp_method(COMPMETHOD_UNKNOWN), _block_size(0) {
 	};
-	
-	unsigned int getCount() const {
-		return _count;
-	};
-	const FileInfoVec& getData() const {
-		return _data;
-	};
-	
-	void deserialize(Stream* stream);
-	void serialize(Stream* stream) const;
-	void printInfo(unsigned int tabcount=0, bool newline=true) const;
-	
-protected:
-	unsigned int _count;
-	FileInfoVec _data;
-};
-
-class Archive {
-public:
-	Archive(const char* pathkey) : _stream(NULL), _pathkey(pathkey) {
-	};
-	Archive(const UnicodeString& pathkey) : _stream(NULL), _pathkey(pathkey) {
-	};
-	~Archive() {
+	~SDPK2() {
 		clear();
 	};
-	
-	void setPathKey(const UnicodeString& pathkey) {
-		_pathkey.setTo(pathkey);
+	void setPath(const char* path) {
+		_path=path;
 	};
-	const UnicodeString& getPathKey() {
-		return _pathkey;
+	const char* getPath() {
+		return _path;
 	};
-	
-	EntryMap::iterator begin() {
-		return _entries.begin();
-	};
-	EntryMap::const_iterator begin() const {
-		return _entries.begin();
-	};
-	EntryMap::iterator end() {
-		return _entries.end();
-	};
-	EntryMap::const_iterator end() const {
-		return _entries.end();
-	};
-	EntryMap::iterator find(unsigned int id) {
-		return _entries.find(id);
-	};
-	EntryMap::const_iterator find(unsigned int id) const {
-		return _entries.find(id);
-	};
-	
-	Entry* findEntry(unsigned int id);
-	const Entry* findEntry(unsigned int id) const;
-	
 	void clear() {
 		clearEntries();
 	};
-	
 	void clearEntries();
+	Entry* findEntry(const MD5Hash& hash);
+	const Entry* findEntry(const MD5Hash& hash) const;
 	void deserializeInfo(Stream* stream);
 	bool open();
 	void close();
@@ -269,12 +118,11 @@ public:
 	
 protected:
 	EndianStream* _stream;
-	UnicodeString _pathkey;
-	IDSet _compressed;
-	IDSet _uncompressed;
-	NameSet _names;
-	FileSet _files;
-	EntryMap _entries;
+	const char* _path;
+	CompressionMethod _comp_method;
+	size_t _block_size;
+	//EntryMap _entries;
+	EntryVec _entries;
 };
 
 } // namespace PK2Unpack
