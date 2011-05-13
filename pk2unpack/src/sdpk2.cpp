@@ -90,11 +90,6 @@ Entry* SDPK2::findEntry(const MD5Hash& hash) {
 }
 
 const Entry* SDPK2::findEntry(const MD5Hash& hash) const {
-	/*EntryMap::const_iterator iter=_entries.find(hash);
-	if (iter!=end()) {
-		return iter->second;
-	}
-	return NULL;*/
 	for (size_t i=0; i<_entries.size(); ++i) {
 		const Entry& e=_entries[i];
 		if (e.hash().compare(hash)==0) {
@@ -105,10 +100,6 @@ const Entry* SDPK2::findEntry(const MD5Hash& hash) const {
 }
 
 void SDPK2::clearEntries() {
-	/*EntryMap::iterator iter;
-	for (iter=_entries.begin(); iter!=_entries.end(); ++iter) {
-		delete iter->second;
-	}*/
 	_entries.clear();
 };
 
@@ -146,7 +137,7 @@ void SDPK2::deserializeInfo(Stream* stream) {
 	for (i=0; i<size; ++i) {
 		_entries[i].deserialize(stream);
 	}
-	size_t begin=32+(size*30);
+	size_t begin=32+(size*30); // Order is not sequential - positions have to be seeked
 	for (i=0; i<size; ++i) {
 		stream->seek(begin+(_entries[i].getBlockSizeIndex()*2));
 		_entries[i].deserializeBlockSize(stream);
@@ -184,10 +175,6 @@ void SDPK2::close() {
 
 void SDPK2::printInfo(unsigned int tabcount, bool newline) const {
 	printf("%.*s[comp_method:%s, path(%lu):\"%s\",\n", tabcount, CONST_TAB_STR, __comp_methods[_comp_method], strlen(_path), _path);
-	/*EntryMap::iterator iter;
-	for (iter=_entries.begin(); iter!=_entries.end(); ++iter) {
-		iter->second->printInfo(tabcount+1, true);
-	}*/
 	for (size_t i=0; i<_entries.size(); ++i) {
 		_entries[i].printInfo(tabcount+1, true);
 	}

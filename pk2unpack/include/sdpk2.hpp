@@ -2,7 +2,6 @@
 #ifndef _PK2UNPACK_SDPK2_HPP_
 #define _PK2UNPACK_SDPK2_HPP_
 
-//#include <map>
 #include <vector>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +17,7 @@ enum CompressionMethod {
 	COMPMETHOD_UNKNOWN=0,
 	COMPMETHOD_FIRST=1,
 	/* PC */
-	COMPMETHOD_ZLIB=1,
+	COMPMETHOD_ZLIB=COMPMETHOD_FIRST,
 	/* PS3 */
 	COMPMETHOD_LZX,
 	COMPMETHOD_LAST=COMPMETHOD_LZX
@@ -121,7 +120,6 @@ protected:
 	const char* _path;
 	CompressionMethod _comp_method;
 	size_t _block_size;
-	//EntryMap _entries;
 	EntryVec _entries;
 };
 

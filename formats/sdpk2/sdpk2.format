@@ -4,6 +4,9 @@
 // Overview
 //	1. SDPK2 format
 //		a. Layout
+//		b. uint40
+//		c. MD5Hash
+//		d. Entry
 
 // *****************************
 // 1. SDPK2 format
@@ -16,18 +19,18 @@
 layout {
 	const rdata<4, 0x00> header="PARS"		// File header
 	short version							// Format version; always 1; src: Gibbed
-	short _unk								// TODO: Unknown; always 4
+	short _unk								// TODO: Might be minor version; always 4
 	rdata<4, 0x20> comp_method				// Compression method; "zlib" for PC, "lzx " (space at end) for PS3
 	uint header_size						// Size of header / offset to first entry data
 	uint entry_size							// Size of entries in the header (should be 30 bytes)
 	uint entry_count						// Number of entries
 	uint block_size							// Size of data blocks (should be 65536); src: Gibbed
-	uint block_block_size					// TODO: Unknown (should be 2); src: Gibbed
+	uint comp_block_element_size			// Assumed size of elements in this.comp_block_sizes; always 2; src: Gibbed
 	Entry entries[entry_count]				// File info
 	ushort comp_block_sizes[entry_count]	// Compressed block sizes; src: Gibbed
 }
 
-// 1.XXX. uint40
+// 1.b. uint40
 //	40-bit uint; src: Gibbed
 define uint40 {
 	real ulong value
@@ -37,13 +40,13 @@ define uint40 {
 	}
 }
 
-// 1.XXX. MD5Hash
+// 1.c. MD5Hash
 //	Plain-data MD5 hash.
 define MD5Hash {
 	char data[16]						// Hash data
 }
 
-// 1.XXX. Entry
+// 1.d. Entry
 //	 Mostly from Gibbed.
 define Entry {
 	MD5Hash hash						// Hash of the entry's entire path (starts with "/")
