@@ -1,15 +1,15 @@
---brinktools sdpk2unpack premake file
+--brinktools pk2unpack premake file
 
-local name="sdpk2unpack"
+local name="pk2unpack"
 local outpath="out/"
 local execpath=outpath..name
 
 if _ACTION == "clean" then
 	os.rmdir(outpath)
-	os.remove("sdpk2unpack")
+	os.remove("pk2unpack")
 end
 
-solution("sdpk2unpack")
+solution("pk2unpack")
 	configurations { "debug", "release" }
 
 local proj=project(name)

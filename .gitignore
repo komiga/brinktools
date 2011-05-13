@@ -9,12 +9,12 @@
 *.a
 
 # Makefiles and build data
-sdpk2unpack/sdpk2unpack
-sdpk2unpack/Makefile
-sdpk2unpack/sdpk2unpack.make
-sdpk2unpack/out/
-sdpk2unpack/bin/
+pk2unpack/pk2unpack
+pk2unpack/Makefile
+pk2unpack/pk2unpack.make
+pk2unpack/out/
+pk2unpack/bin/
 
 # data
 data/*
-sdpk2unpack/dump/*
+pk2unpack/dump/*
