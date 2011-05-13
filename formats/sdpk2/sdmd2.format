@@ -1,8 +1,12 @@
 
-// SDMD2 format
+// SDMD2 (Splash Damage MD2) metadata format
 
 // Overview
 //	1. SDMD2 format
+//		a. Layout
+//		b. IDSet
+//		c. EntryInfoSet
+//		d. FileInfo
 
 // *****************************
 // 1. SDMD2 format
@@ -15,14 +19,14 @@ layout {
 	EntryInfoSet names			// EntryInfoSet
 }
 
-// 1.XXX. IDSet
+// 1.b. IDSet
 define IDSet {
 	uint count					// Number of ids; always 1024 for layout.ids1
 	byte _unk					// TODO: Unknown; always 1
 	int ids[count]				// The id array; -1 means unused/unset
 }
 
-// 1.XXX. EntryInfoSet
+// 1.c. EntryInfoSet
 define EntryInfoSet {
 	int _i1						// TODO: Always 1024? (might always be layout.ids1.count; insufficient data)
 	int _i2						// TODO: Always 1023? (doesn't seem to corelate with anything)
@@ -34,7 +38,7 @@ define EntryInfoSet {
 	FileInfo files[count]		// File entry info
 }
 
-// 1.XXX. FileInfo
+// 1.d. FileInfo
 //	Size: 20 bytes
 define FileInfo {
 	int dir_index				// The string index for the file's directory in EntryInfoSet.names

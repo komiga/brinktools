@@ -1,5 +1,5 @@
 
-// SDPK2 archive format (aka PARS)
+// SDPK2 (Splash Damage PK2) archive format
 
 // Overview
 //	1. SDPK2 format
@@ -28,6 +28,7 @@ layout {
 	uint comp_block_element_size			// Assumed size of elements in this.comp_block_sizes; always 2; src: Gibbed
 	Entry entries[entry_count]				// File info
 	ushort comp_block_sizes[entry_count]	// Compressed block sizes; src: Gibbed
+	// Rest of data should be file data blocks
 }
 
 // 1.b. uint40
