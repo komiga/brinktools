@@ -47,9 +47,14 @@ enum CompressionMethod {
 // plain-data MD5 hash
 class MD5Hash {
 public:
+	MD5Hash(const char* str) {
+		clear();
+		set(str);
+	};
 	MD5Hash() {
 		clear();
 	};
+	bool set(const char* str);
 	unsigned char* data() {
 		return _data;
 	};
@@ -60,6 +65,8 @@ public:
 	void clear() {
 		memset(_data, 0x00, 16);
 	};
+	void getExisting(char* out=NULL, bool nullterm=true) const;
+	char* get(char** out=NULL, bool nullterm=true) const;
 	int compare(const MD5Hash& other) const {
 		return memcmp(_data, other._data, 16);
 	};
@@ -81,9 +88,11 @@ struct MD5HashCompare {
 	};
 };
 
+class SDPK2; // forward declaration
+
 class Entry {
 public:
-	Entry() : _blocksize_index(0), _blocksize(0), _size(0), _offset(0) {
+	Entry() : _blocksize_index(0), _size(0), _offset(0) {
 	};
 	Entry(Stream* stream) {
 		deserialize(stream);
@@ -97,20 +106,20 @@ public:
 	unsigned int getBlockSizeIndex() const {
 		return _blocksize_index;
 	};
-	void* read(Stream* stream, CompressionMethod comp_method) const;
+	int readToStream(Stream* instream, Stream* outstream, const SDPK2& pak) const;
 	void deserialize(Stream* stream);
-	void deserializeBlockSize(Stream* stream);
 	void serialize(Stream* stream) const;
 	void printInfo(unsigned int tabcount=0, bool newline=true) const;
 	
 protected:
 	MD5Hash _hash;
-	unsigned int _blocksize_index, _blocksize;
+	unsigned int _blocksize_index;
 	size_t _size, _offset;
 };
 
 //typedef std::map<const MD5Hash*, Entry*, MD5HashCompare> EntryMap;
 typedef std::vector<Entry> EntryVec;
+typedef std::vector<size_t> BlockSizeTable;
 
 class SDPK2 {
 public:
@@ -118,6 +127,10 @@ public:
 	};
 	~SDPK2() {
 		clear();
+		close();
+	};
+	Stream* getStream() {
+		return _stream;
 	};
 	void setPath(const char* path) {
 		_path=path;
@@ -125,8 +138,21 @@ public:
 	const char* getPath() {
 		return _path;
 	};
+	size_t getBlockSize() const {
+		return _block_size;
+	};
+	CompressionMethod getCompressionMethod() const {
+		return _comp_method;
+	};
+	const BlockSizeTable& getBlockSizeTable() const {
+		return _c_blocksize_table;
+	};
+	const EntryVec& getEntries() const {
+		return _entries;
+	};
 	void clear() {
 		clearEntries();
+		_c_blocksize_table.clear();
 	};
 	void clearEntries();
 	Entry* findEntry(const MD5Hash& hash);
@@ -141,6 +167,7 @@ protected:
 	const char* _path;
 	CompressionMethod _comp_method;
 	size_t _block_size;
+	BlockSizeTable _c_blocksize_table;
 	EntryVec _entries;
 };
 

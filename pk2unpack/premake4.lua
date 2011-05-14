@@ -29,7 +29,7 @@ configuration {"release"}
 	flags {"Optimize", "ExtraWarnings"}
 
 configuration {"gmake"}
-	links {"duct", "icui18n", "icudata", "icuio", "icuuc"}
+	links {"z", "duct", "icui18n", "icudata", "icuio", "icuuc"}
 	postbuildcommands {"cp "..execpath.." ../"..name}
 
 configuration {"linux"}

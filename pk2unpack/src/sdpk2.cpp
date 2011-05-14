@@ -33,30 +33,126 @@ namespace PK2Unpack {
 
 // class MD5Hash implementation
 
-const char __hash_null[]={0x00};
+bool MD5Hash::set(const char* str) {
+	if (strnlen(str, 32)==32) {
+		unsigned short d[4];
+		for (int i=0; i<16; i+=4) {
+			if (sscanf(str+(i*2), "%2hx%2hx%2hx%2hx", d, d+1, d+2, d+3)!=4) {
+				clear();
+				return false;
+			}
+			_data[i]=(unsigned char)d[0];
+			_data[i+1]=(unsigned char)d[1];
+			_data[i+2]=(unsigned char)d[2];
+			_data[i+3]=(unsigned char)d[3];
+		}
+		return true;
+	}
+	return false;
+}
+
+const char __hash_null[16]={0x00};
 
 bool MD5Hash::isNull() const {
 	return memcmp(_data, __hash_null, 16)==0;
 }
 
-void MD5Hash::printInfo(unsigned int tabcount, bool newline) const {
-	//printf("%.*s[%016lx%016lx]%.*s", tabcount, CONST_TAB_STR, ((unsigned long*)_data)[0], ((unsigned long*)_data)[1], (newline) ? 1 : 0, "\n");
-	printf("%.*s[", tabcount, CONST_TAB_STR);
+void MD5Hash::getExisting(char* str, bool nullterm) const {
 	for (int i=0; i<16; i+=4) {
-		printf("%02x%02x%02x%02x", _data[i], _data[i+1], _data[i+2], _data[i+3]);
+		sprintf(str+(i*2), "%02x%02x%02x%02x", _data[i], _data[i+1], _data[i+2], _data[i+3]);
 	}
-	printf("]%.*s", (newline) ? 1 : 0, "\n");
+	if (nullterm) {
+		str[32]=0;
+	}
+}
+
+char* MD5Hash::get(char** out, bool nullterm) const {
+	char* str=(char*)malloc((nullterm) ? 33 : 32);
+	debug_assertp(str, this, "failed to allocate 33- or 32-byte buffer");
+	if (out!=NULL) {
+		*out=str;
+	}
+	return str;
+}
+
+void MD5Hash::printInfo(unsigned int tabcount, bool newline) const {
+	char str[32];
+	getExisting(str, false);
+	printf("%.*s[%.*s]%.*s", tabcount, CONST_TAB_STR, 32, str, (newline) ? 1 : 0, "\n");
 }
 
 // class Entry implementation
 
+#define __read_buf_size 0x10000
+char __read_buf_out[__read_buf_size], __read_buf_in[__read_buf_size];
+
+int Entry::readToStream(Stream* instream, Stream* outstream, const SDPK2& pak) const {
+	debug_assertp(pak.getCompressionMethod()==COMPMETHOD_ZLIB, this, "unsupported compression method");
+	if (_size>0) {
+		z_stream strm;
+		strm.zalloc=Z_NULL;
+		strm.zfree=Z_NULL;
+		strm.opaque=Z_NULL;
+		strm.next_in=(Bytef*)Z_NULL;
+		strm.avail_in=0;
+		strm.next_out=(Bytef*)Z_NULL;
+		strm.avail_out=0;
+		int status=inflateInit2(&strm, 15);
+		debug_assertp(status==Z_OK, this, "failed to init zip stream");
+		instream->seek(_offset);
+		size_t w_sizeleft, w_size, uc_size, c_size, c_blocksize, uc_blocksize;
+		unsigned int b_index=_blocksize_index;
+		uc_size=_size;
+		c_size=0;
+		while (uc_size!=0) {
+			uc_blocksize=(uc_size<pak.getBlockSize()) ? uc_size : pak.getBlockSize();
+			c_blocksize=pak.getBlockSizeTable()[b_index++];
+			c_size+=c_blocksize;
+			//printf("begin uc_size=%li uc_blocksize=%lu c_blocksize=%lu\n", uc_size, uc_blocksize, c_blocksize);
+			debug_assertp(c_blocksize<=uc_blocksize, this, "compressed block size is larger than uncompressed block size");
+			if (c_blocksize==0 || uc_size==c_blocksize) {
+				if (c_blocksize==0) {
+					c_blocksize=pak.getBlockSize();
+				}
+				w_sizeleft=c_blocksize;
+				while (w_sizeleft!=0) {
+					w_size=(w_sizeleft<__read_buf_size) ? w_sizeleft : __read_buf_size;
+					instream->read(__read_buf_in, w_size);
+					outstream->write(__read_buf_in, w_size);
+					w_sizeleft-=w_size;
+				}
+			} else { // inflate
+				w_sizeleft=c_blocksize;
+				//printf("inflate block: w_sizeleft=%lu\n", w_sizeleft);
+				do {
+					w_size=(w_sizeleft<__read_buf_size) ? w_sizeleft : __read_buf_size;
+					instream->read(__read_buf_in, w_size);
+					strm.next_in=(Bytef*)__read_buf_in;
+					strm.avail_in=w_size;
+					do {
+						strm.next_out=(Bytef*)__read_buf_out;
+						strm.avail_out=__read_buf_size;
+						status=inflate(&strm, Z_NO_FLUSH);
+						//printf("status=%d strm.avail_out=%u strm.avail_in=%u chunk_size=%lu\n", status, strm.avail_out, strm.avail_in, __read_buf_size-(size_t)strm.avail_out);
+						debug_assert(status>=Z_OK, "zlib error");
+						outstream->write(__read_buf_out, __read_buf_size-strm.avail_out);
+					} while (strm.avail_out==0);
+					w_sizeleft-=w_size;
+				} while (status>=Z_OK && w_sizeleft>0);
+				debug_assertp((status==Z_OK || status==Z_STREAM_END), this, "failed to handle/decompress block");
+				inflateReset(&strm);
+			}
+			uc_size-=uc_blocksize;
+		}
+		inflateEnd(&strm);
+		//printf("leftover: %lu: %lu, %lu\n", _offset+c_size-instream->pos(), _offset+c_size, instream->pos());
+		debug_assertp(instream->pos()==_offset+c_size, this, "read either too little or too much data");
+	}
+	return 0;
+}
+
 #define __uint40_make(o, b, i) ((o=((size_t)b<<32)|i))
 #define __uint40_split(o, b, i) (({b=o&0x00FF00000000; i=o&0x0000FFFFFFFF;}))
-
-void* Entry::read(Stream* stream, CompressionMethod comp_method) const {
-	debug_assertp(comp_method==COMPMETHOD_ZLIB, this, "unsupported compression");
-	return NULL;
-}
 
 void Entry::deserialize(Stream* stream) {
 	_hash.deserialize(stream);
@@ -68,10 +164,6 @@ void Entry::deserialize(Stream* stream) {
 	b=stream->readByte();
 	i=stream->readInt();
 	__uint40_make(_offset, b, i);
-}
-
-void Entry::deserializeBlockSize(Stream* stream) {
-	_blocksize=(unsigned short)stream->readShort();
 }
 
 void Entry::serialize(Stream* stream) const {
@@ -90,17 +182,12 @@ void Entry::serialize(Stream* stream) const {
 void Entry::printInfo(unsigned int tabcount, bool newline) const {
 	printf("%.*s[hash:", tabcount, CONST_TAB_STR);
 	_hash.printInfo(0, false);
-	printf(", blocksize_index:%6u, blocksize:%8u, size:%8lu, offset:%10lu]%.*s", _blocksize_index, _blocksize, _size, _offset, (newline) ? 1 : 0, "\n");
+	printf(", blocksize_index:%6u, size:%8lu, offset:%10lu]%.*s", _blocksize_index, _size, _offset, (newline) ? 1 : 0, "\n");
 }
 
 // class SDPK2 implementation
 
 Entry* SDPK2::findEntry(const MD5Hash& hash) {
-	/*EntryMap::iterator iter=_entries.find(hash);
-	if (iter!=end()) {
-		return iter->second;
-	}
-	return NULL;*/
 	for (size_t i=0; i<_entries.size(); ++i) {
 		Entry& e=_entries[i];
 		if (e.hash().compare(hash)==0) {
@@ -131,7 +218,7 @@ const char* __comp_methods[]={
 };
 
 void SDPK2::deserializeInfo(Stream* stream) {
-	clear();
+	//clear(); // resizing without clearing is faster
 	int temp;
 	stream->read(&temp, 4);
 	debug_assertp(temp==0x52415350 /*50534152 "PSAR" */, this, "unrecognized header");
@@ -140,33 +227,34 @@ void SDPK2::deserializeInfo(Stream* stream) {
 	temp=stream->readShort();
 	debug_assertp(temp==4, this, "TODO: unrecognized _unk");
 	stream->read(&temp, 4);
+	_comp_method=COMPMETHOD_UNKNOWN;
 	for (unsigned int i=COMPMETHOD_FIRST; i<=COMPMETHOD_LAST; ++i) {
 		if (strncmp((const char*)(&temp), __comp_methods[i], 4)==0) {
 			_comp_method=(CompressionMethod)i;
 			break;
 		}
 	}
-	/*size_t header_size=(size_t)*/stream->readInt();
-	size_t size=(size_t)stream->readInt();
+	size_t header_size=(size_t)stream->readInt();
+	size_t size=(size_t)stream->readInt(); // entry_size
 	debug_assertp(size==30, this, "entry_size!=30");
-	size=(size_t)stream->readInt();
+	size=(size_t)stream->readInt(); // entry_count
 	_block_size=(size_t)stream->readInt();
-	int block_blocksize=stream->readInt();
+	int block_blocksize=stream->readInt(); // size of elements in comp_block_sizes
 	debug_assertp(block_blocksize==2, this, "block_block_size!=2");
 	_entries.resize(size);
 	unsigned int i;
 	for (i=0; i<size; ++i) {
 		_entries[i].deserialize(stream);
 	}
-	size_t begin=32+(size*30); // Order is not sequential - positions have to be seeked
-	for (i=0; i<size; ++i) {
-		stream->seek(begin+(_entries[i].getBlockSizeIndex()*2));
-		_entries[i].deserializeBlockSize(stream);
+	unsigned int count=(header_size-stream->pos())/2;
+	_c_blocksize_table.resize(count);
+	for (i=0; i<count; ++i) {
+		_c_blocksize_table[i]=(unsigned short)stream->readShort();
 	}
-	/*if (stream->pos()!=header_size) {
+	if (stream->pos()!=header_size) {
 		printf("(SDPK2) stream position does not match header_size: %lu != %lu\n", stream->pos(), header_size);
 		assert(false);
-	}*/
+	}
 }
 
 bool SDPK2::open() {
