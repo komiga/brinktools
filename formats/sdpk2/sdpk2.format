@@ -27,7 +27,13 @@ layout {
 	uint block_size							// Size of data blocks (should be 65536); src: Gibbed
 	uint comp_block_element_size			// Assumed size of elements in this.comp_block_sizes; always 2; src: Gibbed
 	Entry entries[entry_count]				// File info
-	ushort comp_block_sizes[entry_count]	// Compressed block sizes; src: Gibbed
+	noread ushort comp_block_sizes[]		// Compressed block sizes; see below inline operation; src: Gibbed
+	
+	operation {
+		uint count=(header_size-pos())/2;
+		comp_block_sizes=ushort[count]; // resize
+		comp_block_sizes.in();
+	}
 	// Rest of data should be file data blocks
 }
 
@@ -51,7 +57,7 @@ define MD5Hash {
 //	 Mostly from Gibbed.
 define Entry {
 	MD5Hash hash						// Hash of the entry's entire path (starts with "/")
-	uint blocksize_index				// Index in layout.comp_block_sizes for the file
+	uint blocksize_index				// Index in layout.comp_block_sizes for the file's first compressed block
 	uint40 size							// The uncompressed size of the file's data
 	uint40 offset						// The offset to the file's data
 }
