@@ -75,10 +75,13 @@ int main(int argc, char** argv) {
 				MD5Hash hash;
 				if (strncmp(__hash_str_ptr, "-a", 2)==0) {
 					__hash_str_ptr=__hash_str;
+					if (strncmp(path, "-a", 2)==0) {
+						path="dump/";
+					}
 					const EntryVec& entries=pak.getEntries();
 					for (size_t i=0; i<entries.size(); ++i) {
 						entries[i].hash().getExisting(__hash_str, false);
-						dump_entry(pak, entries[i], "dump/", __hash_str_ptr);
+						dump_entry(pak, entries[i], path, __hash_str_ptr);
 					}
 				} else if (hash.set(__hash_str_ptr)) {
 					const Entry* entry=pak.findEntry(hash);
