@@ -44,10 +44,10 @@ public:
 		release();
 	};
 	
-	unsigned int getCount() const {
+	uint32_t getCount() const {
 		return _count;
 	};
-	const int* getData() const {
+	const int32_t* getData() const {
 		return _data;
 	}
 	
@@ -64,9 +64,9 @@ public:
 	void printInfo(const char* name, unsigned int tabcount=0, bool newline=true) const;
 	
 protected:
-	unsigned int _count;
-	int* _data;
-	unsigned char _unk;
+	uint32_t _count;
+	int32_t* _data;
+	uint8_t _unk;
 };
 
 class FileInfo {
@@ -77,10 +77,10 @@ public:
 		deserialize(stream);
 	};
 	
-	unsigned int getDirIndex() const {
+	uint32_t getDirIndex() const {
 		return _dir_index;
 	};
-	unsigned int getIndex() const {
+	uint32_t getIndex() const {
 		return _index;
 	};
 	
@@ -89,8 +89,8 @@ public:
 	void printInfo(unsigned int tabcount=0, bool newline=true) const;
 	
 protected:
-	unsigned int _dir_index;
-	unsigned int _index;
+	uint32_t _dir_index;
+	uint32_t _index;
 	DataContainer _dc;
 	time_t _time_modified;
 };
@@ -105,13 +105,13 @@ public:
 		release();
 	};
 	
-	size_t getNameCount() const {
+	uint32_t getNameCount() const {
 		return _name_count;
 	};
-	const unsigned int* getOffsets() const {
+	const uint32_t* getOffsets() const {
 		return _offsets;
 	};
-	size_t getNamesSize() const {
+	uint32_t getNamesSize() const {
 		return _names_size;
 	};
 	const char** getNames() const {
@@ -142,11 +142,11 @@ public:
 	void printInfo(const char* name, unsigned int tabcount=0, bool newline=true) const;
 	
 protected:
-	size_t _name_count;
-	unsigned int* _offsets;
-	size_t _names_size;
+	uint32_t _name_count;
+	uint32_t* _offsets;
+	uint32_t _names_size;
 	char** _names;
-	int _i1, _i2;
+	int32_t _i1, _i2;
 	FileInfoVec _files;
 };
 

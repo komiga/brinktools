@@ -37,23 +37,23 @@ namespace PK2Unpack {
 
 void IDSet::deserialize(Stream* stream) {
 	release();
-	_count=(unsigned int)stream->readInt();
-	_unk=(unsigned char)stream->readByte();
-	_data=(int*)malloc(sizeof(int)*_count);
+	_count=stream->readUInt32();
+	_unk=stream->readUInt8();
+	_data=(int32_t*)malloc(sizeof(int32_t)*_count);
 	debug_assertp(_data, this, "failed to allocate buffer");
 	unsigned int i;
 	for (i=0; i<_count; ++i) {
-		_data[i]=stream->readInt();
+		_data[i]=stream->readInt32();
 	}
 }
 
 void IDSet::serialize(Stream* stream) const {
-	stream->writeInt(_count);
-	stream->writeByte(_unk);
+	stream->writeUInt32(_count);
+	stream->writeUInt8(_unk);
 	if (_data) {
 		unsigned int i;
 		for (i=0; i<_count; ++i) {
-			stream->writeInt(_data[i]);
+			stream->writeInt32(_data[i]);
 		}
 	}
 }
@@ -85,17 +85,15 @@ void IDSet::printInfo(const char* name, unsigned int tabcount, bool newline) con
 // class FileInfo implementation
 
 void FileInfo::deserialize(Stream* stream) {
-	_dir_index=(unsigned int)stream->readInt();
-	_index=(unsigned int)stream->readInt();
-	/*_i1=(unsigned int)stream->readInt();
-	_i2=stream->readInt();*/
+	_dir_index=stream->readUInt32();
+	_index=stream->readUInt32();
 	_dc.deserialize(stream, 8);
-	_time_modified=(time_t)stream->readInt();
+	_time_modified=(time_t)stream->readUInt32();
 }
 
 void FileInfo::serialize(Stream* stream) const {
-	stream->writeInt(_dir_index);
-	stream->writeInt(_index);
+	stream->writeUInt32(_dir_index);
+	stream->writeUInt32(_index);
 	_dc.serialize(stream);
 }
 
@@ -124,15 +122,15 @@ void FileInfo::printInfo(unsigned int tabcount, bool newline) const {
 
 void EntryInfoSet::deserialize(Stream* stream) {
 	release();
-	_i1=stream->readInt();
-	_i2=stream->readInt();
-	_name_count=(size_t)stream->readInt();
-	_offsets=(unsigned int*)malloc(sizeof(unsigned int)*_name_count);
+	_i1=stream->readInt32();
+	_i2=stream->readInt32();
+	_name_count=stream->readUInt32();
+	_offsets=(uint32_t*)malloc(sizeof(uint32_t)*_name_count);
 	size_t i;
 	for (i=0; i<_name_count; ++i) {
-		_offsets[i]=(unsigned int)stream->readInt();
+		_offsets[i]=stream->readUInt32();
 	}
-	_names_size=(unsigned int)stream->readInt();
+	_names_size=stream->readUInt32();
 	_names=(char**)malloc(sizeof(char*)*_name_count);
 	debug_assertp(_names, this, "failed to allocate buffer");
 	size_t size;
@@ -143,7 +141,7 @@ void EntryInfoSet::deserialize(Stream* stream) {
 		debug_assertp(_names[i], this, "failed to allocate buffer");
 		stream->read((void*)_names[i], size);
 	}
-	size=(size_t)stream->readInt();
+	size=stream->readUInt32();
 	_files.resize(size);
 	for (i=0; i<size; ++i) {
 		_files[i].deserialize(stream);
@@ -151,16 +149,16 @@ void EntryInfoSet::deserialize(Stream* stream) {
 }
 
 void EntryInfoSet::serialize(Stream* stream) const {
-	stream->writeInt(_i1);
-	stream->writeInt(_i2);
-	stream->writeInt(_name_count);
+	stream->writeInt32(_i1);
+	stream->writeInt32(_i2);
+	stream->writeUInt32(_name_count);
 	size_t i;
 	if (_offsets) {
 		for (i=0; i<_name_count; ++i) {
-			stream->writeInt(_offsets[i]);
+			stream->writeUInt32(_offsets[i]);
 		}
 	}
-	stream->writeInt(_names_size);
+	stream->writeUInt32(_names_size);
 	if (_names) {
 		size_t size;
 		for (i=0; i<_name_count; ++i) {
@@ -170,18 +168,18 @@ void EntryInfoSet::serialize(Stream* stream) const {
 				stream->write(_names[i], size);
 			} else {
 				debug_printp_source(this, "no character data for index");
-				stream->writeByte(0x00);
+				stream->writeUInt8(0x00);
 			}
 		}
 	}
-	stream->writeInt(_files.size());
+	stream->writeUInt32(_files.size());
 	for (i=0; i<_files.size(); ++i) {
 		_files[i].serialize(stream);
 	}
 }
 
 void EntryInfoSet::printInfo(const char* name, unsigned int tabcount, bool newline) const {
-	printf("%.*s%s[_i1:%u, _i2:%u, names_size:%lu, names(%lu):{\n", tabcount, CONST_TAB_STR, name, _i1, _i2, _names_size, _name_count);
+	printf("%.*s%s[_i1:%u, _i2:%u, names_size:%u, names(%u):{\n", tabcount, CONST_TAB_STR, name, _i1, _i2, _names_size, _name_count);
 	size_t i;
 	for (i=0; i<_name_count; ++i) {
 		if (_names[i]) {

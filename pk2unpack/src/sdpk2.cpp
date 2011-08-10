@@ -156,27 +156,28 @@ int Entry::readToStream(Stream* instream, Stream* outstream, const SDPK2& pak) c
 
 void Entry::deserialize(Stream* stream) {
 	_hash.deserialize(stream);
-	_blocksize_index=stream->readInt();
-	unsigned int b, i;
-	b=stream->readByte();
-	i=stream->readInt();
+	_blocksize_index=stream->readUInt32();
+	uint8_t b;
+	uint32_t i;
+	b=stream->readUInt8();
+	i=stream->readUInt32();
 	__uint40_make(_size, b, i);
-	b=stream->readByte();
-	i=stream->readInt();
+	b=stream->readUInt8();
+	i=stream->readUInt32();
 	__uint40_make(_offset, b, i);
 }
 
 void Entry::serialize(Stream* stream) const {
 	_hash.serialize(stream);
-	stream->writeInt(_blocksize_index);
-	unsigned char b;
-	unsigned int i;
+	stream->writeUInt32(_blocksize_index);
+	uint8_t b;
+	uint32_t i;
 	__uint40_split(_size, b, i);
-	stream->writeByte(b);
-	stream->writeInt(i);
+	stream->writeUInt8(b);
+	stream->writeUInt32(i);
 	__uint40_split(_offset, b, i);
-	stream->writeByte(b);
-	stream->writeInt(i);
+	stream->writeUInt8(b);
+	stream->writeUInt32(i);
 }
 
 void Entry::printInfo(unsigned int tabcount, bool newline) const {
@@ -222,9 +223,9 @@ void SDPK2::deserializeInfo(Stream* stream) {
 	int temp;
 	stream->read(&temp, 4);
 	debug_assertp(temp==0x52415350 /*50534152 "PSAR" */, this, "unrecognized header");
-	temp=stream->readShort();
+	temp=stream->readInt16();
 	debug_assertp(temp==1, this, "TODO: unrecognized version");
-	temp=stream->readShort();
+	temp=stream->readInt16();
 	debug_assertp(temp==4, this, "TODO: unrecognized _unk");
 	stream->read(&temp, 4);
 	_comp_method=COMPMETHOD_UNKNOWN;
@@ -234,12 +235,12 @@ void SDPK2::deserializeInfo(Stream* stream) {
 			break;
 		}
 	}
-	size_t header_size=(size_t)stream->readInt();
-	size_t size=(size_t)stream->readInt(); // entry_size
+	size_t header_size=stream->readUInt32();
+	size_t size=stream->readUInt32(); // entry_size
 	debug_assertp(size==30, this, "entry_size!=30");
-	size=(size_t)stream->readInt(); // entry_count
-	_block_size=(size_t)stream->readInt();
-	int block_blocksize=stream->readInt(); // size of elements in comp_block_sizes
+	size=stream->readUInt32(); // entry_count
+	_block_size=stream->readUInt32();
+	int block_blocksize=stream->readInt32(); // size of elements in comp_block_sizes
 	debug_assertp(block_blocksize==2, this, "block_block_size!=2");
 	_entries.resize(size);
 	unsigned int i;
@@ -249,7 +250,7 @@ void SDPK2::deserializeInfo(Stream* stream) {
 	unsigned int count=(header_size-stream->pos())/2;
 	_c_blocksize_table.resize(count);
 	for (i=0; i<count; ++i) {
-		_c_blocksize_table[i]=(unsigned short)stream->readShort();
+		_c_blocksize_table[i]=stream->readUInt16();
 	}
 	if (stream->pos()!=header_size) {
 		printf("(SDPK2) stream position does not match header_size: %lu != %lu\n", stream->pos(), header_size);

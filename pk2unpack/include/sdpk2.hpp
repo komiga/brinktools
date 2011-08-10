@@ -113,8 +113,8 @@ public:
 	
 protected:
 	MD5Hash _hash;
-	unsigned int _blocksize_index;
-	size_t _size, _offset;
+	uint32_t _blocksize_index;
+	uint64_t _size, _offset;
 };
 
 //typedef std::map<const MD5Hash*, Entry*, MD5HashCompare> EntryMap;
